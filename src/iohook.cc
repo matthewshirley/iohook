@@ -14,8 +14,10 @@
 
 using namespace v8;
 using Callback = Nan::Callback;
+
 static bool sIsRunning = false;
 static bool sIsDebug = false;
+static int sCurrentStatus = 0;
 
 static HookProcessWorker* sIOHook = nullptr;
 
@@ -293,6 +295,10 @@ void run() {
   // Start the hook and block.
   // NOTE If EVENT_HOOK_ENABLED was delivered, the status will always succeed.
   int status = hook_enable();
+
+  // Set the status to sCurrentStatus so GetStatus has visibility
+  sCurrentStatus = status;
+
   switch (status) {
     case UIOHOOK_SUCCESS:
       // We no longer block, so we need to explicitly wait for the thread to die.
@@ -518,6 +524,10 @@ NAN_METHOD(StopHook) {
   }
 }
 
+NAN_METHOD(GetStatus) {
+  info.GetReturnValue().Set(sCurrentStatus);
+}
+
 NAN_MODULE_INIT(Init) {
   Nan::Set(target, Nan::New<String>("startHook").ToLocalChecked(),
   Nan::GetFunction(Nan::New<FunctionTemplate>(StartHook)).ToLocalChecked());
@@ -527,6 +537,9 @@ NAN_MODULE_INIT(Init) {
   
   Nan::Set(target, Nan::New<String>("debugEnable").ToLocalChecked(),
   Nan::GetFunction(Nan::New<FunctionTemplate>(DebugEnable)).ToLocalChecked());
+
+  Nan::Set(target, Nan::New<String>("getStatus").ToLocalChecked(),
+  Nan::GetFunction(Nan::New<FunctionTemplate>(GetStatus)).ToLocalChecked());
 }
 
 NODE_MODULE(nodeHook, Init)
